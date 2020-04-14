@@ -1,54 +1,45 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BackgroundWorker
 {
     public partial class Form1 : Form
     {
+        CancellationTokenSource source;
+
         public Form1()
         {
             InitializeComponent();
             btnCancel.Enabled = false;
         }
 
-        private void btnStart_Click(object sender, EventArgs e)
+        private async void btnStart_Click(object sender, EventArgs e)
         {
             btnStart.Enabled = false;
             btnCancel.Enabled = true;
-            backgroundWorker1.RunWorkerAsync();            
+            source = new CancellationTokenSource();
+            for (int index = 0; index <= 10; index++)
+            {
+                txtProgress.Text = $"{10 * index}%";
+                await Task.Delay(1000); // heavy task here.
+                if (source.Token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+
+            txtProgress.Text = source.Token.IsCancellationRequested ? "canceled" : "finsihed";
+            source.Dispose();
+            btnStart.Enabled = true;
+            btnCancel.Enabled = false;
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
             btnCancel.Enabled = false;
-            backgroundWorker1.CancelAsync();
-        }
-
-        private void backgroundWorker1_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
-        {
-            for (int index = 0; index <= 10; index++)
-            {
-                backgroundWorker1.ReportProgress(10 * index);
-                Thread.Sleep(1000); // heavy task here.
-                if (backgroundWorker1.CancellationPending)
-                {
-                    e.Cancel = true;
-                    return;
-                }
-            }
-        }
-
-        private void backgroundWorker1_ProgressChanged(object sender, System.ComponentModel.ProgressChangedEventArgs e)
-        {
-            txtProgress.Text = $"{e.ProgressPercentage}%";
-        }
-
-        private void backgroundWorker1_RunWorkerCompleted(object sender, System.ComponentModel.RunWorkerCompletedEventArgs e)
-        {
-            txtProgress.Text = e.Cancelled ? "canceled": "finsihed";
-            btnStart.Enabled = true;
-            btnCancel.Enabled = false;
+            source?.Cancel();
         }
     }
 }
